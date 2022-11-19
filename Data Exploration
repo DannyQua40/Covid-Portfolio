@@ -1,0 +1,125 @@
+SELECT * 
+FROM `momrr-366614.2022_covid_reports.Deaths`
+WHERE continent is not null
+
+        -- total cases vs total deaths --
+        --Likelihood of dying of contractin covid in U.S
+SELECT location, date, total_cases, total_deaths, (total_deaths/total_cases)*100 percent_death, 
+FROM `momrr-366614.2022_covid_reports.Deaths`
+WHERE location ="United States"
+order by 1,2;
+
+          --total Cases vs population -- 
+          -- Shows percentage of population got Covid
+SELECT location, date, total_cases, population, (total_cases/population)*100 percent_pop_infected, 
+FROM `momrr-366614.2022_covid_reports.Deaths`
+WHERE location ="United States"
+order by 1,2;
+
+          --Countries with highest infection rate compared to population
+SELECT location, population, MAX(total_cases) HighestInfectionCount, MAX((total_cases/population))*100 percent_pop_infected
+FROM `momrr-366614.2022_covid_reports.Deaths`
+GROUP by location, population
+order by percent_pop_infected DESC;
+
+
+                --Countries with highest death count per population--
+SELECT location, MAX(total_deaths) totaldeathcount 
+FROM `momrr-366614.2022_covid_reports.Deaths`
+WHERE continent is not null
+Group by location
+order BY totaldeathcount DESC
+
+                --Breaking down by continent
+
+SELECT location, MAX(total_deaths) totaldeathcount 
+FROM `momrr-366614.2022_covid_reports.Deaths`
+WHERE continent is null and location not like ("%income%") 
+Group by location
+order BY totaldeathcount DESC;
+        --  OR
+SELECT continent, MAX(total_deaths) totaldeathcount 
+FROM `momrr-366614.2022_covid_reports.Deaths`
+WHERE continent is not null 
+Group by continent
+order BY totaldeathcount DESC
+
+                --Showing Continents with highest death count
+
+SELECT continent, MAX(total_deaths) totaldeathcount 
+FROM `momrr-366614.2022_covid_reports.Deaths`
+WHERE continent is not null 
+Group by continent
+order BY totaldeathcount DESC
+
+                --Global Numbers
+SELECT sum(new_cases) total_cases , sum(new_deaths) total_deaths, sum(new_deaths)/sum(new_cases)*100 death_percent
+FROM `momrr-366614.2022_covid_reports.Deaths`
+WHERE continent is not null
+order by 1,2;
+
+                --Looking at Total Population vs Vaccinations
+
+SELECT deaths.continent, deaths.location, deaths.date, deaths.population, vac.new_vaccinations, SUM(vac.new_vaccinations) OVER (Partition by deaths.location ORDER by deaths.location, deaths.date) RollingPeopleVaccinated
+FROM `momrr-366614.2022_covid_reports.Deaths` deaths
+JOIN `momrr-366614.2022_covid_reports.Vaccinations` vac
+        ON deaths.location = vac.location
+        and deaths.date = vac.date
+WHERE deaths.continent is not null
+order by 2
+
+                -- USE CTE to Find RollingPeopleVaccinated / Population 
+
+With PopvsVac AS(
+SELECT deaths.continent, deaths.location, deaths.date, deaths.population, vac.new_vaccinations, SUM(vac.new_vaccinations) OVER (Partition by deaths.location ORDER by deaths.location, deaths.date) RollingPeopleVaccinated
+FROM `momrr-366614.2022_covid_reports.Deaths` deaths
+JOIN `momrr-366614.2022_covid_reports.Vaccinations` vac
+        ON deaths.location = vac.location
+        and deaths.date = vac.date
+WHERE deaths.continent is not null
+-- order by 2
+)
+Select *, (RollingPeopleVaccinated/population)*100
+FROM PopvsVac
+
+
+                --Temp Table
+
+Drop table if exists `momrr-366614.2022_covid_reports.percentpeoplevaccinated` 
+
+Create Table `momrr-366614.2022_covid_reports.percentpeoplevaccinated`
+(
+        Continent string,
+        location string,
+        Date datetime,
+        Population numeric,
+        New_vaccinations numeric,
+        RollingPeopleVaccinated numeric,
+);
+INSERT INTO `momrr-366614.2022_covid_reports.percentpeoplevaccinated`
+SELECT deaths.continent, deaths.location, deaths.date, deaths.population, vac.new_vaccinations, SUM(vac.new_vaccinations) OVER (Partition by deaths.location ORDER by deaths.location, deaths.date) RollingPeopleVaccinated
+FROM `momrr-366614.2022_covid_reports.Deaths` deaths
+JOIN `momrr-366614.2022_covid_reports.Vaccinations` vac
+        ON deaths.location = vac.location
+        and deaths.date = vac.date
+WHERE deaths.continent is not null;
+
+Select *, (RollingPeopleVaccinated/population)*100
+FROM `momrr-366614.2022_covid_reports.percent
+peoplevaccinated`
+
+
+        -- - Creating View to Store Data for Later Visualtion
+
+
+Drop table if exists `momrr-366614.2022_covid_reports.percentpeoplevaccinated` ;
+Create View `momrr-366614.2022_covid_reports.percentpeoplevaccinated` as
+SELECT deaths.continent, deaths.location, deaths.date, deaths.population, vac.new_vaccinations, SUM(vac.new_vaccinations) OVER (Partition by deaths.location ORDER by deaths.location, deaths.date) RollingPeopleVaccinated
+FROM `momrr-366614.2022_covid_reports.Deaths` deaths
+JOIN `momrr-366614.2022_covid_reports.Vaccinations` vac
+        ON deaths.location = vac.location
+        and deaths.date = vac.date
+WHERE deaths.continent is not null;
+
+SELECT * 
+FROM `momrr-366614.2022_covid_reports.percentpeoplevaccinated`
